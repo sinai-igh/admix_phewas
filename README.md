@@ -7,7 +7,7 @@ Author: Sinead Cullina
 Pipeline Summary:
 Calculate global ancestry, phase data and subset, run local ancestry with GNOMIX, convert GNOMIX output to VCF files, compare local ancestry output to global ancestry proportions, filter samples and variants, calculate GRM, run SAIGE step 1 and step 2 for admixture mapping, admixture mapping results post processing, pre GWAS QC of genotype data, run SAIGE step 1 and step 2 for GWAS.
 
-This pipeline is composed of a series of scripts. Each this document describes the input and output of each of these scripts.
+This pipeline is composed of a series of scripts. This document describes the order, input and output of each of these scripts to conduct an admixture pheWAS.
 
 
 Pipeline Map:
