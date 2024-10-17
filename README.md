@@ -7,11 +7,10 @@ Citation: "Systematic comparison of phenome wide admixture mapping and genome-wi
 Author: Sinead Cullina
 
 ##Pipeline Summary##
-Calculate global ancestry, phase data and subset, run local ancestry with GNOMIX, convert GNOMIX output to VCF files, compare local ancestry output to global ancestry proportions, filter samples and variants, calculate GRM, run SAIGE step 1 and step 2 for admixture mapping, admixture mapping results post processing, pre GWAS QC of genotype data, run SAIGE step 1 and step 2 for GWAS.
+This pipeline calculates global ancestry, phases genotype data and subsets samples, runs local ancestry with GNOMIX, converts GNOMIX output to VCF files, compares local ancestry output to global ancestry proportions, filters samples and variants, and runs SAIGE for admixture mapping and GWAS. It also includes some post-processing steps and result plotting.
 
-This pipeline is composed of a series of scripts. This document describes the order, input and output of each of these scripts to conduct an admixture pheWAS.
+The pipeline consists of a series of scripts and commands. Below is the order of operations, input, and output descriptions for each script used to conduct an admixture PheWAS.
 
-v
 ## Pipeline Map: ##
 #### 0.) Global ancestry inference  #####
 
@@ -19,10 +18,10 @@ v
   * Merge files using plink
   * Filter for ADMIXTURE input
   * Run ADMIXTURE
-  * Remove samples with complex admixture patterns.
+  * Remove samples with complex admixture patterns
 
 ##### 1.) Infer local ancestry #####
-  * Downsample merged file to keep reference panels and samples passing QC
+  * Downsample merged files for QC-passed reference panels and samples
   * Phase using EAGLE
   * Convert to VCF format using SHAPEIT 
   * Normalize
@@ -32,102 +31,106 @@ v
 ##### 2.1) Run admixture mapping: Two-way and three-way #####
 * Convert GNOMIX output to VCFs for SAIGE
 * Create genotype files for SAIGE Step 1
-* Run SAIGE Step 1
-* Run SAIGE Step 2
+* Run SAIGE Step 1 and Step 2
 * Process Results
 
 ##### 2.2) Run GWAS #####
 * Create genotype files for SAIGE Step 1
-* Run SAIGE Step 1
-* Run SAIGE Step 2
+* Run SAIGE Step 1 and Step 2
 
 ##### 3.1) Plotting results #####
-
+* Use plotting scripts to visualize results from both local ancestry and GWAS.
 
 ## 0.) Global ancestry inference ###
 ##### Overview #####
-You can use PLINK v1.9 to merge your query genotype data and reference panels. First you should find the maximum number of overlapping variants between all files. Then you may need to flip and rename some of the variants so that the order and name of the variants matches between all genotype files. I usually use PLINKv2 for these steps. As of writing PLINKv2 does not have a suitable merging function.  
+
+The first step in the analysis is to merge your query genotype data with the reference panels you are using.  You should find the maximum number of overlapping variants between all files and downsample your files to just these variants. You may need to flip and rename some of the variants so that the order and name of the variants is matching between all genotype files. I usually use PLINKv2 for these steps. As of writing PLINKv2 does not have a suitable merging function. You can use PLINK v1.9 to merge the filtered files at the end.
 
 Inputs:
-Query dataset (i.e. samples you are using for association testing)
-Reference panels 
+*Query dataset (i.e. samples you are using for association testing)
+*Reference panels 
+*exclusion_regions_under_selection.bed  #provided in repository
 
 To flip variants:  
 
 ```
-plink2  --alt1-allele gda_to_flip2.txt \
-  --bfile GSA_GDA_V2_TOPMED_HG38_id_update \
+plink2  --alt1-allele list_of_variants_to_flip.txt \
+  --bfile query_or_reference_panel_file \
+  --extract range position_intervals_to_keep.bed
   --make-bed \
-  --out GSA_GDA_V2_TOPMED_HG38_id_update_flipped \
+  --out query_or_reference_panel_file_flipped_alleles \
 ```
 To rename variants: 
-
 ```
-plink2  --bfile GSA_GDA_V2_TOPMED_HG38
-  --extract range GDA_genotyped_sites.plink
+plink2  --bfile query_or_reference_panel_file_flipped_alleles
   --keep-allele-order
   --make-bed
   --max-alleles 2
   --new-id-max-allele-len 66
-  --out GSA_GDA_V2_TOPMED_HG38_id_update
-  --set-all-var-ids @:#:$r:$a
+  --set-all-var-ids @:#:\$r:\$a
+  --out query_or_reference_panel_file_flipped_alleles_renamed
  ```
- 
 To merge genotype files:
 
 ```
-plink --bfile GSA_GDA_V2_TOPMED_HG38_id_update_flipped_ID
-  --bmerge TGP_HGDP_WHI_SGDP_BIOME
-  --extract gda_plus_refs_perfect_match.plink
+plink --bfile query_or_reference_panel_file_flipped_alleles_renamed
+  --bmerge list_of_other_genotype_files_to_merge
+  --extract overlapping_snps.plink
   --make-bed
-  --out GDA_GSA_imputed_TGP_HGDP_WHI_SGDP_BIOME
+  --out merged_query_and_refs_dataset
 
 ```
-
 I then use this merged dataset for global ancestry inference. Firstly I apply some filtering steps:
 
-#remove rare variants and missingnesss filters. Also remove regions of the genome known to be under strong selection (see exclusion_regions_under_selection.bed file) 
+Remove rare variants and apply missingnesss filters. Also remove regions of the genome known to be under strong selection (see exclusion_regions_under_selection.bed file) 
+
 ```
- plink2  --bfile ../GDA_GSA_imputed_TGP_HGDP_WHI_SGDP_BIOME
+ plink2  --bfile merged_query_and_refs_dataset
   --exclude range exclusion_regions_under_selection.bed
   --geno 0.05
   --mac 10
   --maf 0.01
   --make-bed
   --mind 0.05
-  --out 
+  --out merged_query_and_refs_dataset_admixture_qc
  
  ```
-Remove palindromic sites, LD prune and remove 2nd degree relateds: 
+Remove palindromic sites, LD prune and remove 2nd degree relateds. Note that you can apply more stringent/relaxed ld filters but you should have at least ~120K variants in the end for input into ADMIXTURE for accurate admixture estimation.
+
+```
+awk '{ if (($5 == "A" && $6 == "T") || ($5 == "T" && $6 == "A") || ($5 == "C" && $6 == "G") || ($5 == "G" && $6 == "C")) print $2 }' your_file.bim > palindromic_snps.txt #get list of palindromix sites
+plink2 --bfile merged_query_and_refs_dataset_admixture_qc --indep-pairwise 50 5 0.2 --out ld_prunelist #ld prune
+plink2 --bfile merged_query_and_refs_dataset_admixture_qc --king-cutoff 0.354 --out king_duplicates #remove duplicate samples (if neccesary)
+
+cat palindromic_snps.txt ld_prunelist.out > palindromic_and_ld_snps.out
+plink2 --bfile merged_query_and_refs_dataset_admixture_qc --exclude palindromic_and_ld_snps.out --keep king_duplicates.king.cutoff.in.id --make-bed --out admixture_input_file
+```
 
 
-Then launch ADMIXTURE: 
+Launch ADMIXTURE: 
 Run according to the documentation (https://dalexander.github.io/admixture/)
 citation: Alexander, David H., John Novembre, and Kenneth Lange. "Fast model-based estimation of ancestry in unrelated individuals." Genome research 19.9 (2009): 1655-1664.
 
 ```
-geno_path=/sc/arion/projects/kennylab/Sinead/LAI_GDA_GSA/HIS_AA_imputed_merge/ADMIXTURE/
+geno_path=/path/to/your/files/
 
-for i in {2,3,4,5,6}
+for i in {2,3,4,5,6} #set number of Ks you want to calculate
 
 do
-file=GDA_GSA_imputed_TGP_HGDP_WHI_SGDP_BIOME_mind_maf_geno_no_palindrome_exclusion_regions_no_duplicates_LDprune_cell_paper.bed
-echo 'cd '${geno_path}'' > Admixture_cell_${i}.pbs
-echo 'module load admixture' >> Admixture_cell_${i}.pbs
-echo 'admixture '${geno_path}$file' '${i}' -j48 --cv' >> Admixture_cell_${i}.pbs
+file=admixture_input_file.bed
+echo 'cd '${geno_path}'' > admixture_${i}.pbs
+echo 'module load admixture' >> admixture_${i}.pbs
+echo 'admixture '${geno_path}$file' '${i}' -j48 --cv' >> admixture_${i}.pbs
 
-## if premium doesn't work for you, you may want to try changing to -q alloc
-
-bsub -q premium -P acc_ipm2  -n 48 -W 20:00 -R rusage[mem=6000] -o Admixture_cell_${i}.log < Admixture_cell_${i}.pbs
+bsub -q submission_parameter -P submission_parameter  -n 48 -W 20:00 -R rusage[mem=6000] -o admixture_${i}.log < admixture_${i}.pbs #if submitting to bsub compute cluster
 
 done
-
 ```
-
-The output will consist of files that end in .Q and .P for each admixture component tested.
-
+The output will consist of files that end in .Q (admixture proportions) and .P (admixture probabilities) for each admixture component tested. 
 
 Script to order admixture components, visualize, select reference panel samples and filter query samples:
+script input: admixture_input_file.fam file, admixture_input_file.Q 
+
 
 
 #### 1)  Infer local ancestry ####
@@ -137,7 +140,7 @@ Use Eagle to phase genotype data. Run according to the documentation. Examples a
 Note: 1000 Genomes reference panels and genetic maps can be downloaded here: https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.html.
 
 ```
-geno_path=/sc/arion/projects/kennylab/Sinead/LAI_GDA_GSA/HIS_AA_imputed_merge/PHASING/
+geno_path=/path/to/your/files/
 for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
 
 do
