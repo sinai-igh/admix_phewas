@@ -98,14 +98,13 @@ Remove rare variants and apply missingnesss filters. Also remove regions of the 
 Remove palindromic sites, LD prune and remove 2nd degree relateds. Note that you can apply more stringent/relaxed ld filters but you should have at least ~120K variants in the end for input into ADMIXTURE for accurate admixture estimation.
 
 ```
-awk '{ if (($5 == "A" && $6 == "T") || ($5 == "T" && $6 == "A") || ($5 == "C" && $6 == "G") || ($5 == "G" && $6 == "C")) print $2 }' your_file.bim > palindromic_snps.txt #get list of palindromix sites
+awk '{ if (($5 == "A" && $6 == "T") || ($5 == "T" && $6 == "A") || ($5 == "C" && $6 == "G") || ($5 == "G" && $6 == "C")) print $2 }' merged_query_and_refs_dataset_admixture_qc.bim > palindromic_snps.txt #get list of palindromix sites
 plink2 --bfile merged_query_and_refs_dataset_admixture_qc --indep-pairwise 50 5 0.2 --out ld_prunelist #ld prune
 plink2 --bfile merged_query_and_refs_dataset_admixture_qc --king-cutoff 0.354 --out king_duplicates #remove duplicate samples (if neccesary)
 
 cat palindromic_snps.txt ld_prunelist.out > palindromic_and_ld_snps.out
 plink2 --bfile merged_query_and_refs_dataset_admixture_qc --exclude palindromic_and_ld_snps.out --keep king_duplicates.king.cutoff.in.id --make-bed --out admixture_input_file
 ```
-
 
 Launch ADMIXTURE: 
 Run according to the documentation (https://dalexander.github.io/admixture/)
@@ -129,9 +128,27 @@ done
 The output will consist of files that end in .Q (admixture proportions) and .P (admixture probabilities) for each admixture component tested. 
 
 Script to order admixture components, visualize, select reference panel samples and filter query samples:
-script input: admixture_input_file.fam file, admixture_input_file.Q 
+input: 
+*admixture_input_file.fam
+*admixture_input_file.Q 
+*mapper_file.txt - file with three columns. One containing sample ID, one containing name of dataset sample came from, one containing population label
 
+output:
+*ordered_admixture_file.Q
 
+There are two separate R scripts. One for ordering K3 ADMIXTURE output ad one for ordering K4 ADMIXTURE output.
+```
+Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt  #for K3
+
+Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt #for K4
+```
+
+Then plot admixture results using R script: 
+
+```
+Rscript plot_admixture.R 3
+```
+Once you have matched ancestry components based on genetic similarity with reference panels you can apply sample filters. Cohort and reference panel selection based on global ancestry componenets is subjective and project-specific. Use the admixture data to remove query samples that have considerable components from ancestries that are not going to be inferred in local ancestry inference. Subset reference samples to those with >90\% of the ancestry component being inferred. 
 
 #### 1)  Infer local ancestry ####
 
@@ -140,19 +157,29 @@ Use Eagle to phase genotype data. Run according to the documentation. Examples a
 Note: 1000 Genomes reference panels and genetic maps can be downloaded here: https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.html.
 
 ```
+#!/bin/bash
+
+# Path to the genotype files
 geno_path=/path/to/your/files/
-for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
 
+# Loop through chromosomes 1 to 22
+for i in {1..22}
 do
-echo 'cd '${geno_path}'' > Launch_Eagle_${i}.pbs
-echo 'module load eagle/2.4' >> Launch_Eagle_${i}.pbs
-echo 'eagle --bfile HIS_AFR_plus_Ref_no_2nd_deg_rel --geneticMapFile /hpc/packages/minerva-common/eagle/2.4/Eagle_v2.4/tables/genetic_map_hg38_withX.txt.gz --chrom '${i}' --outPrefix Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}'' >> Launch_Eagle_${i}.pbs
-## if premium doesn't work for you, you may want to try changing to -q alloc
+  # Create a PBS script for each chromosome
+  pbs_file="Launch_Eagle_${i}.pbs"
 
-bsub -q premium -P acc_kennylab -n 10 -R span[ptile=10] -R rusage[mem=1200] -W 60:00 -o Launch_Eagle_${i}.log < Launch_Eagle_${i}.pbs
+  # Write the PBS commands to the file
+  echo "cd ${geno_path}" > ${pbs_file}
+  echo "module load eagle/2.4" >> ${pbs_file}
+  echo "eagle --bfile HIS_AFR_plus_Ref_no_2nd_deg_rel \\
+          --geneticMapFile /hpc/packages/minerva-common/eagle/2.4/Eagle_v2.4/tables/genetic_map_hg38_withX.txt.gz \\
+          --chrom ${i} \\
+          --outPrefix Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel${i}" >> ${pbs_file}
+
+  # Submit the job to the cluster using bsub with specified resources
+  bsub -q premium -P acc_kennylab -n 10 -R "span[ptile=10]" -R "rusage[mem=1200]" -W 60:00 -o "Launch_Eagle_${i}.log" < ${pbs_file}
 
 done
-
 ```
 
 Use Eagle to phase genotype data. Run according to the documentation. Examples as follows:
