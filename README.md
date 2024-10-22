@@ -142,7 +142,6 @@ Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input
 
 Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt #for K4
 ```
-
 Then plot admixture results using R script: 
 
 ```
@@ -151,10 +150,14 @@ Rscript plot_admixture.R 3
 Once you have matched ancestry components based on genetic similarity with reference panels you can apply sample filters. Cohort and reference panel selection based on global ancestry componenets is subjective and project-specific. Use the admixture data to remove query samples that have considerable components from ancestries that are not going to be inferred in local ancestry inference. Subset reference samples to those with >90\% of the ancestry component being inferred. 
 
 #### 1)  Infer local ancestry ####
+*use merged file prior to ADMIXTURE filtering: merged_query_and_refs_dataset
+*subset cohort to keep query and reference samples
+*remove 2nd degree relateds
+*apply missingness filter (Eagle automatically removes variants with >10\% missingness.)
 
 Use Eagle to phase genotype data. Run according to the documentation. Examples as follows:
 
-Note: 1000 Genomes reference panels and genetic maps can be downloaded here: https://mathgen.stats.ox.ac.uk/impute/1000GP_Phase3.html.
+Note: Eagle genetic maps downloaded from: https://alkesgroup.broadinstitute.org/Eagle/downloads/tables/
 
 ```
 #!/bin/bash
@@ -171,66 +174,56 @@ do
   # Write the PBS commands to the file
   echo "cd ${geno_path}" > ${pbs_file}
   echo "module load eagle/2.4" >> ${pbs_file}
-  echo "eagle --bfile HIS_AFR_plus_Ref_no_2nd_deg_rel \\
+  echo "eagle --bfile merged_query_and_refs_dataset_downsampled  \\
           --geneticMapFile /hpc/packages/minerva-common/eagle/2.4/Eagle_v2.4/tables/genetic_map_hg38_withX.txt.gz \\
           --chrom ${i} \\
-          --outPrefix Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel${i}" >> ${pbs_file}
+          --outPrefix phased_query_and_refs_chr_${i}" >> ${pbs_file}
 
   # Submit the job to the cluster using bsub with specified resources
-  bsub -q premium -P acc_kennylab -n 10 -R "span[ptile=10]" -R "rusage[mem=1200]" -W 60:00 -o "Launch_Eagle_${i}.log" < ${pbs_file}
+  bsub -q  submission_parameter  -P  submission_parameter   -n 10 -R "span[ptile=10]" -R "rusage[mem=1200]" -W 60:00 -o "Launch_Eagle_${i}.log" < ${pbs_file}
 
 done
 ```
-
-Use Eagle to phase genotype data. Run according to the documentation. Examples as follows:
+Use Shapeit to convert .haps and .sample files to .vcf. Bcftools index and normalize variants calls. split into reference, and query files for GNOMIX. Run according to the documentation. Examples as follows:
 
 ```
-geno_path=/sc/arion/projects/kennylab/Sinead/LAI_GDA_GSA/HIS_AA_imputed_merge/PHASING/
+geno_path=/path/to/your/files/
 
 for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
 
 do
 echo 'cd '${geno_path}'' > Launch_shapeit_${i}.pbs
 echo 'module load shapeit/v2r900' >> Launch_shapeit_${i}.pbs
-echo 'gunzip Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}'.haps.gz' >> Launch_shapeit_${i}.pbs
-echo 'shapeit -convert --input-haps Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}' --output-vcf Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}'.vcf' >> Launch_shapeit_${i}.pbs
+echo 'module load bcftools' >>   Launch_shapeit_${i}.pbs
+echo 'gunzip phased_query_and_refs_chr_'${i}'.haps.gz' >> Launch_shapeit_${i}.pbs
+echo 'shapeit -convert --input-haps phased_query_and_refs_chr_'${i}' --output-vcf phased_query_and_refs_chr_'${i}'.vcf' >> Launch_shapeit_${i}.pbs
+echo 'bcftools norm --check-ref -s -f B38.primary_assembly.genome.fa phased_query_and_refs_chr_'${i}'.vcf -Oz >  phased_norm_query_and_refs_chr_'${i}'.vcf.gz' >>  Launch_shapeit_${i}.pbs
+
+# split into GNOMIX files:
+#African American query
+echo 'bcftools view -S aa_query.bcftools.keep --force-samples phased_norm_query_and_refs_chr_'${i}'.vcf.gz -Ov -o aa_query_phased_chr_'${i}'.vcf' >> Launch_shapeit_${i}.pbs
+
+#Hispanic Latino query
+echo 'bcftools view -S HL_query.bcftools.keep --force-samples phased_norm_query_and_refs_chr_'${i}'.vcf.gz -Ov -o hl_query_phased_chr_'${i}'.vcf' >>  Launch_shapeit_${i}.pbs
+
+#Hispanic Latino Reference
+echo 'bcftools view -S HL_ref.bcftools.keep --force-samples phased_norm_query_and_refs_chr_'${i}'.vcf.gz -Ov -o hl_ref_phased_chr_'${i}'.vcf' >> Launch_shapeit_${i}.pbs
+
+#African American Reference
+echo 'bcftools view -S AA_ref.bcftools.keep --force-samples phased_norm_query_and_refs_chr_'${i}'.vcf.gz -Ov -o aa_ref_phased_chr_'${i}'.vcf' >>  Launch_shapeit_${i}.pbs
 
 
-bsub -q premium -P acc_kennylab -W 12:00 -M 70000 -o Launch_shapeit_${i}.log < Launch_shapeit_${i}.pbs
-
-done
-
-```
-
-Bcftools index and normalize variants calls:
-
-```
-geno_path=/sc/arion/projects/kennylab/Sinead/LAI_GDA_GSA/HIS_AA_imputed_merge/PHASING/
-
-for i in {1,2,3,4,5,6,7,8,9,11,10,12,13,14,15,16,17,18,19,20,21,22}
-
-do
-echo 'cd '${geno_path}'' > Launch_normalization_chr${i}.pbs
-echo 'module load bcftools' >>  Launch_normalization_chr${i}.pbs
-echo 'bcftools norm --check-ref -s -f /sc/arion/projects/ipm/data/GenomeReferences/GRCh38Ref/Converted/B38.primary_assembly.genome.fa Phased_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}'.vcf -Oz >  Phased_norm_HIS_AFR_plus_Ref_no_2nd_deg_rel'${i}'.vcf.gz' >>  Launch_normalization_chr${i}.pbs
-
-bsub -q premium -P acc_kennylab -W 07:00 -M 50000 -o  Launch_normalization_chr${i}.log <  Launch_normalization_chr${i}.pbs
+# Submit the job to the cluster using bsub with specified resources
+bsub -q  submission_parameter  -P submission_parameter   -W 12:00 -M 70000 -o Launch_shapeit_${i}.log < Launch_shapeit_${i}.pbs
 
 done
 
 ```
-
-Separate out samples into query and reference panels for GNOMIX, in my case I had four files because I was training my own local ancestry model:
-Hispanic Latino Reference VCF
-Hispanic Latino Query VCF
-African American Reference VCF
-African American Query VCF
-
 
 Run GNOMIX according to the documentation (https://github.com/AI-sandbox/gnomix). Examples as follows:
 
 ```
-IN_PRE=$1 #/sc/arion/projects/kennylab/Sinead/LAI_GDA_GSA/HIS_AA_imputed_merge/GNOMIX_LAI/
+IN_PRE=$1 #/path/to/your/files/
 OUT_PRE=$2 #launch_GNOMIX_
 
 NOW=$(date +"%d%m%y")
@@ -244,8 +237,8 @@ cat <<EOF > ${CONFIG_ADDR}
 #!/bin/bash
 
 #BSUB -J GNOMIX_AA_SHORT_$i
-#BSUB -P acc_kennylab
-#BSUB -q premium
+#BSUB -P  submission_parameter 
+#BSUB -q  submission_parameter 
 #BSUB -n 3
 #BSUB -R "span[hosts=1]"
 #BSUB -R himem
@@ -258,19 +251,18 @@ ml anaconda3
 ml bcftools
 source activate /sc/arion/projects/kennylab/roohy/conda/envs/igh_gnomix/
 
-python3 /sc/arion/projects/kennylab/roohy/utils/gnomix/gnomix.py ${IN_PRE}query_AA_Shapeit_normalized_Phased_GDA_Chromosome_${i}.vcf ${IN_PRE}gnomix_chr${i}_local_ancestry_short_ref_AA ${i} False ${IN_PRE}genetic_map_files/chr${i}.gmap ${IN_PRE}REF_SHORT_AA_Shapeit_normalized_Phased_GDA_Chromosome_${i}.vcf ${IN_PRE}AA_small_ref_panel.smap /sc/arion/projects/kennylab/roohy/utils/gnomix/configs/config_array.yaml
+python3 gnomix.py ${IN_PRE}aa_query_phased_chr_${i}.vcf ${IN_PRE}gnomix_chr${i}_local_ancestry_aa ${i} False ${IN_PRE}genetic_map_files/chr${i}.gmap ${IN_PRE}aa_ref_phased_chr_${i}.vcf ${IN_PRE}aa_ref_panel.smap configs/config_array.yaml
 
 EOF
 bsub < ${CONFIG_ADDR}
 done
-
 ```
 
-This will generate a directory for each chromosome with local ancestry calls summarized in .msp, .fb and .lai files. I then use R script  make_VCF_file_from_GNOMIX_AA.R to convert the local ancestry calls to VCF style format for two way local ancestry,   make_VCF_file_from_GNOMIX_HL.R does the same for three-way local ancestry calls. The script takes a .msp file as input, in the case of three way local ancestry it will output three different VCF files, one for each local ancestry background (i.e. AFR, EUR, NAT). For two-way local ancestry only one VCF file is output.
+This will generate a directory for each chromosome with local ancestry calls summarized in .msp, .fb and .lai files. I then use R script  make_VCF_file_from_GNOMIX_AA.R to convert the local ancestry calls to VCF style format for two-way local ancestry,   make_VCF_file_from_GNOMIX_HL.R does the same for three-way local ancestry calls. The script takes a .msp file as input, in the case of three way local ancestry it will output three different VCF files, one for each local ancestry background (i.e. AFR, EUR, NAT). For two-way local ancestry only one VCF file is output.
+
+Additionally R script  get_sum_bp_per_ancestry.R calculates the sum of local ancestry components in bp to plot the correletion between global admixture components and local ancestry proportions for  QC purposes.
 
 Merge vcf files of local ancestry calls and remove outlier samples and regions identified in QC for local ancestry inference.
-
-
 
 #### 2) Run admixture mapping: Two-way and three-way ####
 
