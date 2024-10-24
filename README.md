@@ -364,3 +364,4 @@ done < /sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/all_gend
 
 ```
 
+*STEAM package for calculating admixture mapping significance thresholds: https://github.com/GrindeLab/STEAM
