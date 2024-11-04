@@ -151,7 +151,7 @@ input:
 * mapper_file.txt - file with three columns. One containing sample ID, one containing name of dataset sample came from, one containing population label
 
 output:
-*ordered_admixture_file.Q
+* ordered_admixture_file.Q
 
 There are two separate R scripts. One for ordering K3 ADMIXTURE output and one for ordering K4 ADMIXTURE output.
 ```
@@ -164,15 +164,15 @@ Then plot admixture results using R script:
 ```
 Rscript plot_admixture.R 3
 ```
-Once you have matched ancestry components based on genetic similarity with reference panels you can apply sample filters. Cohort and reference panel selection based on global ancestry componenets is subjective and project-specific. Use the admixture data to remove query samples that have considerable components from ancestries that are not going to be inferred in local ancestry inference. Subset reference samples to those with >90\% of the ancestry component being inferred. 
+Once you have matched ancestry components based on genetic similarity with reference panels you can apply sample filters. Cohort and reference panel selection based on global ancestry componenets is subjective and project-specific. Use the plotted admixture data to remove query samples that have considerable components from ancestries that are not going to be inferred in local ancestry inference. Subset reference samples to those with >90\% of the ancestry component being inferred. 
 
 #### 1)  Infer local ancestry ####
-*use merged file prior to ADMIXTURE filtering: merged_query_and_refs_dataset
-*subset cohort to keep query and reference samples
-*remove 2nd degree relateds
-*apply missingness filter (Eagle automatically removes variants with >10\% missingness.)
+* use merged file prior to ADMIXTURE filtering: merged_query_and_refs_dataset
+* subset cohort to keep query and reference samples
+* remove 2nd degree relateds
+* apply missingness filter (Eagle automatically removes variants with >10\% missingness.)
 
-Use Eagle to phase genotype data. Run according to the documentation. Examples as follows:
+Use Eagle to phase genotype data. Run according to the documentation https://alkesgroup.broadinstitute.org/Eagle/. Examples as follows:
 
 Note: Eagle genetic maps downloaded from: https://alkesgroup.broadinstitute.org/Eagle/downloads/tables/
 
@@ -201,13 +201,18 @@ do
 
 done
 ```
-Use Shapeit to convert .haps and .sample files to .vcf. Bcftools index and normalize variants calls. split into reference, and query files for GNOMIX. Run according to the documentation. Examples as follows:
+Use Shapeit to convert .haps and .sample files to .vcf. Bcftools index and normalize variants calls. split into reference, and query files for GNOMIX. Run according to the documentation. 
+* https://samtools.github.io/bcftools/bcftools.html
+* https://mathgen.stats.ox.ac.uk/genetics_software/shapeit/shapeit.html
+
+Example script:
 
 ```
 geno_path=/path/to/your/files/
 
-for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
+for i in {1..22}
 
+  # Write the PBS commands to the file
 do
 echo 'cd '${geno_path}'' > Launch_shapeit_${i}.pbs
 echo 'module load shapeit/v2r900' >> Launch_shapeit_${i}.pbs
@@ -230,54 +235,79 @@ echo 'bcftools view -S HL_ref.bcftools.keep --force-samples phased_norm_query_an
 echo 'bcftools view -S AA_ref.bcftools.keep --force-samples phased_norm_query_and_refs_chr_'${i}'.vcf.gz -Ov -o aa_ref_phased_chr_'${i}'.vcf' >>  Launch_shapeit_${i}.pbs
 
 
-# Submit the job to the cluster using bsub with specified resources
+# job submission parameters
 bsub -q  submission_parameter  -P submission_parameter   -W 12:00 -M 70000 -o Launch_shapeit_${i}.log < Launch_shapeit_${i}.pbs
 
 done
 
 ```
 
-Run GNOMIX according to the documentation (https://github.com/AI-sandbox/gnomix). Examples as follows:
+Run GNOMIX according to the documentation (https://github.com/AI-sandbox/gnomix). I used genotype data for LAI and so chose the genotype config file from GNOMIX (https://github.com/AI-sandbox/gnomix/blob/main/configs/config_array.yaml) 
+
+Example script:
 
 ```
-IN_PRE=$1 #/path/to/your/files/
-OUT_PRE=$2 #launch_GNOMIX_
+# Define the input and output prefixes from command line arguments
+IN_PRE=$1         # Input directory prefix (e.g., /path/to/your/files/)
+OUT_PRE=$2        # Output file prefix (e.g., launch_GNOMIX_)
 
+# Get the current date in the format DDMMYY
 NOW=$(date +"%d%m%y")
 
+# Define the prefix for configuration files
 CONFIG_PRE=${OUT_PRE}_
-# mkdir $CONFIG_PRE
-for i in {1,2,3,4,5,6,8,9,10,11,12,14,15,16,17,18,20,21,22}
+
+# Loop over each chromosome  to create separate job submission files for each
+for i in {1..22}
 do
-CONFIG_ADDR=${CONFIG_PRE}${i}_subfile_
-cat <<EOF > ${CONFIG_ADDR}
+    # Define the address (file path) for the current configuration file
+    CONFIG_ADDR=${CONFIG_PRE}${i}_subfile_
+
+    # Generate a job submission script for each chromosome and save it to ${CONFIG_ADDR}
+    cat <<EOF > ${CONFIG_ADDR}
 #!/bin/bash
 
-#BSUB -J GNOMIX_AA_SHORT_$i
-#BSUB -P  submission_parameter 
-#BSUB -q  submission_parameter 
-#BSUB -n 3
-#BSUB -R "span[hosts=1]"
-#BSUB -R himem
-#BSUB -R rusage[mem=120000]
-#BSUB -W 15:00
-#BSUB -o ${CONFIG_PRE}${NOW}_${i}_AA_SHORT.out
-#BSUB -e ${CONFIG_PRE}${NOW}_${i}_AA_SHORT.err
-#BSUB -L /bin/bash
+#some example job submission parameters
+#BSUB -J GNOMIX_AA_SHORT_$i         # Job name 
+#BSUB -P submission_parameter        
+#BSUB -q submission_parameter      
+#BSUB -n 3     
+#BSUB -R "span[hosts=1]"     
+#BSUB -R himem              
+#BSUB -R rusage[mem=120000]         
+#BSUB -W 15:00                 
+#BSUB -o ${CONFIG_PRE}${NOW}_${i}_AA_SHORT.out  # job output file
+#BSUB -e ${CONFIG_PRE}${NOW}_${i}_AA_SHORT.err  # job error file
+#BSUB -L /bin/bash                  # Use bash shell for job execution
+
+# Load necessary modules and activate the required conda environment
 ml anaconda3
 ml bcftools
 source activate /sc/arion/projects/kennylab/roohy/conda/envs/igh_gnomix/
 
-python3 gnomix.py ${IN_PRE}aa_query_phased_chr_${i}.vcf ${IN_PRE}gnomix_chr${i}_local_ancestry_aa ${i} False ${IN_PRE}genetic_map_files/chr${i}.gmap ${IN_PRE}aa_ref_phased_chr_${i}.vcf ${IN_PRE}aa_ref_panel.smap configs/config_array.yaml
+# Execute the gnomix.py script with specified input files and parameters
+python3 gnomix.py ${IN_PRE}aa_query_phased_chr_${i}.vcf \              # Input VCF file for the chromosome
+                  ${IN_PRE}gnomix_chr${i}_local_ancestry_aa \          # Output file prefix for local ancestry
+                  ${i} \                                               # Chromosome number
+                  False \                                              # intent to use phasing correction 
+                  ${IN_PRE}genetic_map_files/chr${i}.gmap \            # Genetic map file 
+                  ${IN_PRE}aa_ref_phased_chr_${i}.vcf \                # Reference file
+                  ${IN_PRE}aa_ref_panel.smap \                         # sample map file
+                  configs/config_array.yaml                            # Configuration file
 
 EOF
-bsub < ${CONFIG_ADDR}
+
+    # Submit the job with the generated script
+    bsub < ${CONFIG_ADDR}
 done
 ```
 
-This will generate a directory for each chromosome with local ancestry calls summarized in .msp, .fb and .lai files. I then use R script  make_VCF_file_from_GNOMIX_AA.R to convert the local ancestry calls to VCF style format for two-way local ancestry,   make_VCF_file_from_GNOMIX_HL.R does the same for three-way local ancestry calls. The script takes a .msp file as input, in the case of three way local ancestry it will output three different VCF files, one for each local ancestry background (i.e. AFR, EUR, NAT). For two-way local ancestry only one VCF file is output.
+This will generate a directory for each chromosome with local ancestry calls summarized in .msp, .fb and .lai files. I then use the custom R script make_VCF_file_from_GNOMIX_AA.R to convert the local ancestry calls to VCF style format for two-way local ancestry,  make_VCF_file_from_GNOMIX_HL.R does the same for three-way local ancestry calls. The script takes a .msp file as input, in the case of three way local ancestry it will output three different VCF files, one for each local ancestry background (i.e. AFR, EUR, NAT). For two-way local ancestry only one VCF file is output.
 
-Additionally R script  get_sum_bp_per_ancestry.R calculates the sum of local ancestry components in bp to plot the correletion between global admixture components and local ancestry proportions for  QC purposes.
+Additionally:
+* R script get_sum_bp_per_ancestry.R calculates the sum of local ancestry components in bp to plot the correlation between global admixture components and local ancestry proportions for  QC purposes.
+* R script get_LAI_density.R calculates density of local ancestry calls for each ancestry background, genome wide for  QC purposes. Plot local ancestry call density for each ancestry background remove the HLA region and then remove  regions that have local ancestry call density +/-3 SD from the median. 
+* Centromeric regions should also be removed from local ancestry calls, they can be downloaded at: https://genome.ucsc.edu/cgi-bin/hgTables;Group: Mapping and Sequencing, Track: Centromeres, Table Centromeres
 
 Merge vcf files of local ancestry calls and remove outlier samples and regions identified in QC for local ancestry inference.
 
@@ -341,7 +371,7 @@ NOW=$(date +"%d%m%y")
 # mkdir $CONFIG_PRE
 while read p;
 do
-for c in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22};
+for c in {1..22};
 do
 CONFIG_ADDR=subfiles/STEP2_anc0_chr_${c}_phecode_${p}_subfile_
 cat <<EOF > ${CONFIG_ADDR}
