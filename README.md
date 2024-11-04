@@ -1,6 +1,6 @@
 Local ancestry PheWAS pipeline scripts and summary statistics
 =================
-NOTE: This file is a work in progress expected completion: 10/23/24
+NOTE: This file is a work in progress expected completion: 11/05/24
 
 Citation: "Systematic comparison of phenome wide admixture mapping and genome-wide association in a diverse health system biobank"
 
@@ -10,6 +10,9 @@ Author: Sinead Cullina
 This pipeline calculates global ancestry, phases genotype data and subsets samples, runs local ancestry with GNOMIX, converts GNOMIX output to VCF files, compares local ancestry output to global ancestry proportions, filters samples and variants, and runs SAIGE for admixture mapping and GWAS. It also includes some post-processing steps and result plotting.
 
 The pipeline consists of a series of scripts and commands. Below is the order of operations, input, and output descriptions for each script used to conduct an admixture PheWAS.
+
+Toy dataset to use with these commands: https://drive.google.com/drive/folders/1J0xpkTBwyMI3MMCDRi24TPrpbuPQuQtn?usp=sharing
+
 
 ## Pipeline Map: ##
 #### 0.) Global ancestry inference  #####
