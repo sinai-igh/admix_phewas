@@ -8,7 +8,7 @@ Author: Sinead Cullina
 
 ## Pipeline Summary ##
 
-This pipeline calculates global ancestry, phases genotype data and subsets samples, runs local ancestry with GNOMIX, converts GNOMIX output to VCF files, compares local ancestry output to global ancestry proportions, filters samples and variants, and runs SAIGE for admixture mapping and GWAS. It also includes some post-processing steps and result plotting.
+This pipeline calculates global ancestry, phases genotype data and subsets samples, runs local ancestry with GNOMIX, converts GNOMIX output to VCF files, compares local ancestry output to global ancestry proportions, filters samples and variants, and runs SAIGE for admixture mapping and fine-mapping. It also includes some post-processing steps and result plotting.
 
 The pipeline consists of a series of scripts and commands. Below is the order of operations, commands and scripts used to conduct an admixture PheWAS.
 
@@ -410,5 +410,11 @@ done
 done < /sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/all_gender_phecode_gtr30_HIS.txt
 
 ```
+* STEAM package for calculating admixture mapping significance thresholds: https://github.com/GrindeLab/STEAM
 
-*STEAM package for calculating admixture mapping significance thresholds: https://github.com/GrindeLab/STEAM
+* additional script for post-processing of association results:
+
+
+#### 3) Fine-map admixture mapping peaks using conditional association testing ####
+
+
