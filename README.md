@@ -6,13 +6,27 @@ Citation: "Systematic comparison of phenome wide admixture mapping and genome-wi
 
 Author: Sinead Cullina
 
-##Pipeline Summary##
+## Pipeline Summary ##
+
 This pipeline calculates global ancestry, phases genotype data and subsets samples, runs local ancestry with GNOMIX, converts GNOMIX output to VCF files, compares local ancestry output to global ancestry proportions, filters samples and variants, and runs SAIGE for admixture mapping and GWAS. It also includes some post-processing steps and result plotting.
 
-The pipeline consists of a series of scripts and commands. Below is the order of operations, input, and output descriptions for each script used to conduct an admixture PheWAS.
+The pipeline consists of a series of scripts and commands. Below is the order of operations, commands and scripts used to conduct an admixture PheWAS.
 
-Toy dataset to use with these commands: https://drive.google.com/drive/folders/1J0xpkTBwyMI3MMCDRi24TPrpbuPQuQtn?usp=sharing
+Toy dataset that you can use with these commands: https://drive.google.com/drive/folders/1J0xpkTBwyMI3MMCDRi24TPrpbuPQuQtn?usp=sharing
 
+This toy dataset uses thousand genomes (1KGP) and human genome diversity project (HGDP) whole genome sequencing data published here: https://pubmed.ncbi.nlm.nih.gov/38749656/. The dataset has been downsampled to include samples with the following population labels at a selection of GDA panel sites:
+
+##### Potential Reference Samples #####
+* European: CEU, TSI
+* African: YRI, LWK
+* Native American: Pima, Surui, Colombian,  Karitiana, Maya (all from HGDP), MXL, PUR
+
+
+##### Admixed populations for LAI #####
+* CLM - Colombians from Medellín, Colombia (three-way admixture)
+* ASW - African Ancestry in Southwest US (two-way admixture)
+
+A mapper file with population labels for these samples called: sample_map_file_1kgp_hgdp.txt is also in the google drive.
 
 ## Pipeline Map: ##
 #### 0.) Global ancestry inference  #####
