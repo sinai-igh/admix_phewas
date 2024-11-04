@@ -61,7 +61,7 @@ A mapper file with population labels for these samples called: sample_map_file_1
 ## 0.) Global ancestry inference ###
 ##### Overview #####
 
-The first step in the analysis is to merge your query genotype data with the reference panels you are using.  You should find the maximum number of overlapping variants between all files and downsample your files to just these variants. You may need to flip and rename some of the variants so that the order and name of the variants is matching between all genotype files. I usually use PLINKv2 for these steps. As of writing PLINKv2 does not have a suitable merging function. You can use PLINK v1.9 to merge the filtered files at the end.
+The first step in the analysis is to merge your query genotype data with the reference panels you are using.  You should find the maximum number of overlapping variants between all files and downsample your files to just these variants. You may need to flip and rename some of the variants so that the order and name of the variants is matching between all genotype files. I usually use PLINKv2 for these steps. As of writing PLINKv2 does not have a suitable merging function. You can use PLINK v1.9 to merge the filtered files at the end. If using the toy dataset this step is unnessesary as the query and reference samples are already merged.
 
 Inputs:
 *Query dataset (i.e. samples you are using for association testing)
@@ -103,7 +103,7 @@ Remove rare variants and apply missingnesss filters. Also remove regions of the 
 
 ```
  plink2  --bfile merged_query_and_refs_dataset
-  --exclude range exclusion_regions_under_selection.bed
+  --exclude range exclusion_regions.bed
   --geno 0.05
   --mac 10
   --maf 0.01
@@ -144,16 +144,16 @@ done
 ```
 The output will consist of files that end in .Q (admixture proportions) and .P (admixture probabilities) for each admixture component tested. 
 
-Script to order admixture components, visualize, select reference panel samples and filter query samples:
+Next we run a script to order admixture components, visualize, select reference panel samples and filter query samples
 input: 
-*admixture_input_file.fam
-*admixture_input_file.Q 
-*mapper_file.txt - file with three columns. One containing sample ID, one containing name of dataset sample came from, one containing population label
+* admixture_input_file.fam
+* admixture_input_file.Q 
+* mapper_file.txt - file with three columns. One containing sample ID, one containing name of dataset sample came from, one containing population label
 
 output:
 *ordered_admixture_file.Q
 
-There are two separate R scripts. One for ordering K3 ADMIXTURE output ad one for ordering K4 ADMIXTURE output.
+There are two separate R scripts. One for ordering K3 ADMIXTURE output and one for ordering K4 ADMIXTURE output.
 ```
 Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt  #for K3
 
