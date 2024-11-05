@@ -155,14 +155,15 @@ output:
 
 There are two separate R scripts. One for ordering K3 ADMIXTURE output and one for ordering K4 ADMIXTURE output.
 ```
-Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt  #for K3
+Rscript annotate_admixture_output.K4.R admixture_input_file.Q  admixture_input_file.fam mapper_file.txt  #for K3
 
-Rscript annotate_admixture_output.K4.R admixture_input_file.Q ,  admixture_input_file.fam, mapper_file.txt #for K4
+Rscript annotate_admixture_output.K4.R admixture_input_file.Q  admixture_input_file.fam mapper_file.txt #for K4
 ```
 Then plot admixture results using R script: 
 
 ```
-Rscript plot_admixture.R 3
+Rscript plot_admixture.R 3 #for K3
+Rscript plot_admixture.R 4 #for K4
 ```
 Once you have matched ancestry components based on genetic similarity with reference panels you can apply sample filters. Cohort and reference panel selection based on global ancestry componenets is subjective and project-specific. Use the plotted admixture data to remove query samples that have considerable components from ancestries that are not going to be inferred in local ancestry inference. Subset reference samples to those with >90\% of the ancestry component being inferred. 
 
@@ -411,10 +412,20 @@ done < /sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/all_gend
 
 ```
 * STEAM package for calculating admixture mapping significance thresholds: https://github.com/GrindeLab/STEAM
+ - Significance threshold AA: p<1.60x10-05  
+ - Significance threshold HL: p<4.88x10-06 
 
-* additional script for post-processing of association results:
+I consolidate results into a single file that has results for all phecodes tested with original SAIGE output columns (with an addional column added to the results file that has the phecode name). I filter down this results file to retain associations below a significance threshold of p<5x10-4 to scan for admixture mapping peaks.  The top position of each AM peak was defined by the first position with the most significant p-value for a given association, and start and stop positions for the peak interval are defined as the positions at which the p-value signal drops below one order of magnitude from the peak. 
 
+This script filters this consolidated results file, identifies the number of unique GWS peaks per phecode per chromosome, defines peak boundaries, and adds some additional annotation. Following use of this script, peaks should be plotted and boundaries manually inspected some admixture mapping peaks can have complex structure that require manual adjustment.
 
+Phecode maps for the phecode definiton used can be downloaded at: https://phewascatalog.org/
+
+```
+
+Rscript process_SAIGE_output.R consolidateded_saige_results_file.txt  phecode_definitions1.2.csv GWS_significant_peaks_annotated.txt
+
+```
 #### 3) Fine-map admixture mapping peaks using conditional association testing ####
 
 
