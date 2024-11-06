@@ -306,8 +306,16 @@ done
 This will generate a directory for each chromosome with local ancestry calls summarized in .msp, .fb and .lai files. I then use the custom R script make_VCF_file_from_GNOMIX_AA.R to convert the local ancestry calls to VCF style format for two-way local ancestry,  make_VCF_file_from_GNOMIX_HL.R does the same for three-way local ancestry calls. The script takes a .msp file as input, in the case of three way local ancestry it will output three different VCF files, one for each local ancestry background (i.e. AFR, EUR, NAT). For two-way local ancestry only one VCF file is output.
 
 Additionally:
-* R script get_sum_bp_per_ancestry.R calculates the sum of local ancestry components in bp to plot the correlation between global admixture components and local ancestry proportions for  QC purposes.
-* R script get_LAI_density.R calculates density of local ancestry calls for each ancestry background, genome wide for  QC purposes. Plot local ancestry call density for each ancestry background remove the HLA region and then remove  regions that have local ancestry call density +/-3 SD from the median. 
+* Rscript get_sum_local_ancestry_per_sample_and_lai_genome_density.R:
+  - calculates the sum of local ancestry components in bp to plot the correlation between global admixture components and local ancestry proportions for  QC purposes.
+  - calculates density of local ancestry calls for each ancestry background, genome-wide for  QC purposes. Plot local ancestry call density for each ancestry background remove the HLA region and then remove  regions that have local ancestry call density +/-3 SD from the median. 
+  - script works for both two and three way local ancestry calls
+
+```
+Rscript get_sum_local_ancestry_per_sample_and_lai_genome_density.R lai_results_chr21.msp 21
+
+```
+
 * Centromeric regions should also be removed from local ancestry calls, they can be downloaded at: https://genome.ucsc.edu/cgi-bin/hgTables;Group: Mapping and Sequencing, Track: Centromeres, Table Centromeres
 
 Merge vcf files of local ancestry calls and remove outlier samples and regions identified in QC for local ancestry inference.
