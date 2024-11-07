@@ -436,4 +436,13 @@ Rscript process_SAIGE_output.R consolidateded_saige_results_file.txt  phecode_de
 ```
 #### 3) Fine-map admixture mapping peaks using conditional association testing ####
 
+We next finemap admixture mapping peaks by performing conditional association testing using genotype data of variants falling within the boundaries of the admixture mapping peak. 
+- Formula: Phecode ~ Local Ancestry at index LA SNP + Age + Sex + Genotype Chip + PCs1-10 + TEST SNP GENOTYPE X + full GRM
 
+To do this, I made an R script that takes the position range and extracts this region from an input VCF file that contains genotype calls of individuals that were in the discovery admixture mapping cohort. It then converts genotype calls in the interval to a numeric covariate and adds these columns to existing phenotye + covariate information to use as input for conditional association testing in SAIGE. It also outputs a summary df that details the number of snps in the interval and is used later to launch the conditional SAIGE jobs.
+
+```
+#./prep_conditional_analysis_input_files.sh <assoc_id> <vcf_filepath> <chr> <start_bp> <stop_bp> <cov_file> <phecode_col_name>
+./prep_conditional_analysis_input_files.sh  288.1_HIS_anc2_1 imputed_TOPMed_data.vcf 1 158907131 159795459  his_covariates_plus_phecodes.txt X288.1
+
+```
