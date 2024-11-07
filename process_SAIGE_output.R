@@ -92,7 +92,7 @@ out_sig$min_pos_collapsed <- paste(out_sig$CHR, ":", round(out_sig$MinPOSByChrPh
 out_sig$OR_CI <- paste(out_sig$OR, " (", out_sig$Lower_CI, "-", out_sig$Upper_CI, ")", sep = "")
 out_sig <- unique(out_sig)
 
-out_sigid <- paste(out_sig$phecode, "AA", out_sig_cond$CHR, sep = "_") #add id for association
+out_sig$id <- paste(out_sig$phecode, "AA", out_sig_cond$CHR, sep = "_") #add id for association
 
 # Write final processed table to output file
 write.table(out_sig, outfile, quote = FALSE, sep = "\t", row.names = FALSE)
