@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage:
-# ./run_analysis.sh <assoc_id> <vcf_filepath> <chr> <start_bp> <stop_bp> <cov_file> <phecode_col_name>
+# ./prep_conditional_analysis_input_files.sh <assoc_id> <vcf_filepath> <chr> <start_bp> <stop_bp> <cov_file> <phecode_col_name>
 
 # Check for required arguments
 if [ "$#" -ne 7 ]; then
