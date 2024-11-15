@@ -312,6 +312,7 @@ Additionally:
   - script works for both two and three way local ancestry calls
 
 ```
+Rscript make_VCF_file_from_GNOMIX_AA.R gnomix_chr1_local_ancestry_aa/query_results.msp
 Rscript get_sum_local_ancestry_per_sample_and_lai_genome_density.R lai_results_chr21.msp 21
 
 ```
@@ -324,99 +325,58 @@ Merge vcf files of local ancestry calls and remove outlier samples and regions i
 
 Prune genotype data for calculation of GRM:
 ```
-plink2
-  --indep-pairwise 500 50 0.2
+plink2  --vcf query_HIS_Shapeit_normalized_Phased_GDA_all_chr.vcf.gz \
+  --indep-pairwise 500 50 0.2  \
+  --make-bed \
   --out query_HIS_Shapeit_normalized_Phased_GDA_all_chr_pruned
-  --vcf query_HIS_Shapeit_normalized_Phased_GDA_all_chr.vcf.gz
 ```
-
-
-Run SAIGE step1, calculating full GRM and fitting null model:
-
-```
-NOW=$(date +"%d%m%y")
-
-# mkdir $CONFIG_PRE
-while read p;
-do
-CONFIG_ADDR=subfiles/STEP1_phecode_${p}_subfile_
-cat <<EOF > ${CONFIG_ADDR}
-#!/bin/bash
-
-#BSUB -J SAIGE_STEP1_HIS_${p}
-#BSUB -P acc_kennylab
-#BSUB -q premium
-#BSUB -M 20000
-#BSUB -W 06:00
-#BSUB -n 4
-#BSUB -o logfiles/SAIGE_STEP1_${p}_${NOW}.out
-#BSUB -e logfiles/SAIGE_STEP1_${p}_${NOW}.err
-#BSUB -L /bin/bash
-ml saige
-Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step1_fitNULLGLMM.R 
---plinkFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/query_HIS_Shapeit_normalized_Phased_GDA_all_chr_sparse_input \
---phenoFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/his_covariates_plus_phecodes.txt --phenoCol=${p}  \
---covarColList=YOB,SEX,chip,PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10  \
---qCovarColList=SEX,chip \
---sampleIDColinphenoFile=MASKED_MRN \
---traitType=binary --outputPrefix=output_STEP1/step1_HIS_SAIGE_pheno_${p}  \
---IsOverwriteVarianceRatioFile=TRUE  \
- --nThreads=4 --skipVarianceRatioEstimation=FALSE  \
- --IsOverwriteVarianceRatioFile=TRUE \
-  --isCovariateOffset=TRUE \
-
-EOF
-bsub < ${CONFIG_ADDR}
-done < /sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/all_gender_phecode_gtr30_HIS.txt
+Run SAIGE step1, calculating full GRM and fitting null model and SAIGE step 2, running local ancestry association tests. Documentation here: https://saigegit.github.io/SAIGE-doc/
 
 ```
 
-Run SAIGE step 2 for a given local ancestry:
-
-```
-
-NOW=$(date +"%d%m%y")
-
-# mkdir $CONFIG_PRE
 while read p;
 do
 for c in {1..22};
 do
-CONFIG_ADDR=subfiles/STEP2_anc0_chr_${c}_phecode_${p}_subfile_
-cat <<EOF > ${CONFIG_ADDR}
-#!/bin/bash
 
-#BSUB -J SAIGE_STEP2_anc0_${p}_${c}
-#BSUB -P acc_kennylab
-#BSUB -q premium
-#BSUB -M 2000
-#BSUB -W 04:00
-#BSUB -o /sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/logfiles/anc0_log/SAIGE_STEP2_anc0_${p}_${c}_${NOW}.out
-#BSUB -e /sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/logfiles/anc0_log/SAIGE_STEP2_anc0_${p}_${c}_${NOW}.err
-#BSUB -L /bin/bash
+ml saige #load SAIGE
 
-ml saige
-cd /sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE
+#SAIGE Step 1 
+
+Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step1_fitNULLGLMM.R 
+--plinkFile=/path/to/genotypes/plinkfile/query_HL_Shapeit_normalized_Phased_GDA_all_chr_pruned \
+--phenoFile=HL_covariates_and_phecodes.txt --phenoCol=${p}  \
+--covarColList=YOB,SEX,chip,PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10  \
+--qCovarColList=SEX,chip \
+--sampleIDColinphenoFile=MASKED_MRN \
+--traitType=binary \
+--outputPrefix=output_STEP1/step1_HL_phecode_${p}  \
+--IsOverwriteVarianceRatioFile=TRUE  \
+--nThreads=4 --skipVarianceRatioEstimation=FALSE  \
+--IsOverwriteVarianceRatioFile=TRUE \
+ --isCovariateOffset=TRUE \
+
+
+#SAIGE Step 2
+
 Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step2_SPAtests.R \
---bedFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/step2_plinkfiles/HIS_ancestry_0_HLA_centromere_density_filtered_chr_${c}.bed \
---bimFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/step2_plinkfiles/HIS_ancestry_0_HLA_centromere_density_filtered_chr_${c}.bim  \
---famFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/step2_plinkfiles/HIS_ancestry_0_HLA_centromere_density_filtered_chr_${c}.fam  \
+--bedFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bed \
+--bimFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bim  \
+--famFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.fam  \
 --AlleleOrder=alt-first  \
 --SAIGEOutputFile=output_step2_anc0/HIS_anc0_GNOMIX_step2_no_vr_phecode_${p}_chr${c}.txt \
 --chrom=${c} \
 --minMAF=0  \
 --minMAC=0.5 \
---GMMATmodelFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/output_STEP1/step1_HIS_SAIGE_pheno_${p}.rda  \
---varianceRatioFile=/sc/arion/projects/kennylab/Sinead/AncestryWAS/HIS_imputed_SAIGE/output_STEP1/step1_HIS_SAIGE_pheno_${p}.varianceRatio.txt  \
+--GMMATmodelFile=output_STEP1/step1_HL_phecode_${p}.rda  \
+--varianceRatioFile=output_STEP1/step1_HL_phecode_${p}.varianceRatio.txt  \
 --LOCO=TRUE  \
 --is_Firth_beta=TRUE  \
 --pCutoffforFirth=0.05  \
 --is_output_moreDetails=TRUE 
 
-EOF
-bsub < ${CONFIG_ADDR}
 done
-done < /sc/arion/projects/kennylab/Sinead/AncestryWAS/SAIGE_input_files/all_gender_phecode_gtr30_HIS.txt
+done < phecode_list.txt
 
 ```
 * STEAM package for calculating admixture mapping significance thresholds: https://github.com/GrindeLab/STEAM
