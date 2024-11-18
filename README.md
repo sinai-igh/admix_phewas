@@ -1,6 +1,6 @@
 Local ancestry PheWAS pipeline scripts and summary statistics
 =================
-NOTE: This file is a work in progress expected completion: 11/05/24
+NOTE: This file is a work in progress expected completion: 11/25/24
 
 Citation: "Systematic comparison of phenome wide admixture mapping and genome-wide association in a diverse health system biobank"
 
@@ -316,8 +316,10 @@ Rscript make_VCF_file_from_GNOMIX_AA.R gnomix_chr1_local_ancestry_aa/query_resul
 Rscript get_sum_local_ancestry_per_sample_and_lai_genome_density.R lai_results_chr21.msp 21
 
 ```
-
+Example Local Ancestry Component vs Admixture Correlation Plot:
 ![Alt text](figures/HL_EUR_corr.png)
+
+Example Genome Wide Local Ancestry Density Plot :
 ![Alt text](figures/HL_EUR_density.png)
 
 * Centromeric regions should also be removed from local ancestry calls, they can be downloaded at: https://genome.ucsc.edu/cgi-bin/hgTables;Group: Mapping and Sequencing, Track: Centromeres, Table Centromeres
@@ -346,7 +348,7 @@ ml saige #load SAIGE
 
 #SAIGE Step 1 
 
-Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step1_fitNULLGLMM.R 
+Rscript step1_fitNULLGLMM.R 
 --plinkFile=/path/to/genotypes/plinkfile/query_HL_Shapeit_normalized_Phased_GDA_all_chr_pruned \
 --phenoFile=HL_covariates_and_phecodes.txt --phenoCol=${p}  \
 --covarColList=YOB,SEX,chip,PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10  \
@@ -362,7 +364,7 @@ Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step1_fitNULLGLM
 
 #SAIGE Step 2
 
-Rscript /hpc/packages/minerva-centos7/saige/1.1.6/SAIGE/extdata/step2_SPAtests.R \
+Rscript step2_SPAtests.R \
 --bedFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bed \
 --bimFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bim  \
 --famFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.fam  \
@@ -407,5 +409,49 @@ To do this, I made an R script that takes the position range and extracts this r
 ```
 #./prep_conditional_analysis_input_files.sh <assoc_id> <vcf_filepath> <chr> <start_bp> <stop_bp> <cov_file> <phecode_col_name>
 ./prep_conditional_analysis_input_files.sh  288.1_HIS_anc2_1 imputed_TOPMed_data.vcf 1 158907131 159795459  his_covariates_plus_phecodes.txt X288.1
+
+```
+
+We then run the conditional analysis (example for HL admxiture mapping results on NAT local ancestry background):
+```
+while read snp id pheno chr;
+do
+
+ml saige
+
+Rscript step1_fitNULLGLMM.R  \
+--plinkFile=/path/to/genotypes/plinkfile/query_HL_Shapeit_normalized_Phased_GDA_all_chr_pruned \
+--phenoFile=covariate_files/cov_and_pheno_file_${id}.txt \
+--phenoCol=V2 \
+--covarColList=${snp},YOB,SEX,chip,PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10 \
+--qCovarColList=SEX,chip \
+--sampleIDColinphenoFile=MASKED_MRN \
+--traitType=binary \
+--outputPrefix=output_step1/step1_${id}/step1_HL_SAIGE_${id}_${snp} \
+--IsOverwriteVarianceRatioFile=TRUE  \
+--nThreads=1 \
+--skipVarianceRatioEstimation=FALSE \
+--IsOverwriteVarianceRatioFile=TRUE \
+--isCovariateOffset=TRUE
+
+
+Rscript step2_SPAtests.R \
+ --bedFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bed \
+ --bimFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.bim \
+ --famFile=/path/to/local_anc/plinkfile/HL_NAT_ancestry_HLA_centromere_density_filtered_chr_${c}.fam \
+ --AlleleOrder=ref-first \
+ --SAIGEOutputFile=output_step2/step2_${id}/HL_step2_${id}_${snp}_cond.txt  \
+ --chrom=${chr} \
+ --minMAF=0 \
+ --minMAC=0.5 \
+ --GMMATmodelFile=output_step1/step1_${id}/step1_HL_SAIGE_${id}_${snp}.rda \
+ --varianceRatioFile=output_step1/step1_${id}/step1_HL_SAIGE_${id}_${snp}.varianceRatio.txt \
+ --rangestoIncludeFile="rangefiles/range_file_${id}.txt"  \
+ --LOCO=TRUE \
+ --is_Firth_beta=TRUE \ 
+ --pCutoffforFirth=0.05  \
+ --is_output_moreDetails=TRUE  \
+
+done <  nsnps_in_interval790.6_AA_4.txt
 
 ```
