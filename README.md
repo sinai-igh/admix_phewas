@@ -317,6 +317,9 @@ Rscript get_sum_local_ancestry_per_sample_and_lai_genome_density.R lai_results_c
 
 ```
 
+![Alt text](figures/HL_EUR_corr.tiff)
+![Alt text](figures/HL_EUR_density.tiff)
+
 * Centromeric regions should also be removed from local ancestry calls, they can be downloaded at: https://genome.ucsc.edu/cgi-bin/hgTables;Group: Mapping and Sequencing, Track: Centromeres, Table Centromeres
 
 Merge vcf files of local ancestry calls and remove outlier samples and regions identified in QC for local ancestry inference.
