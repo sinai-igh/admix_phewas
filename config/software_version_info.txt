@@ -1,0 +1,7 @@
+R version 4.2.2
+ADMIXTURE Version 1.22
+eagle v2.4 
+bcftools v1.16
+SAIGE v1.3.1
+
+HPC OS: CentOS Linux 7 (Core)
