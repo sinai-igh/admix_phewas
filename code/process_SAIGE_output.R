@@ -1,3 +1,5 @@
+args <- commandArgs(TRUE)
+
 # Load necessary libraries
 require(data.table)  # For efficient data manipulation
 require(dplyr)       # For data manipulation (especially useful for grouping and summarizing data)

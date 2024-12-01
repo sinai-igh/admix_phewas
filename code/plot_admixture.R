@@ -1,3 +1,5 @@
+args <- commandArgs(TRUE)
+
 # Accept parameters
 working_dir <- args[1]
 ordered_admixture <- args[2]  # e.g., /sc/private/regen/data/GSA_GDA/imputed_TOPMED_V2/addition/PC/GSA_GDA_PCA_V2.txt

@@ -1,3 +1,5 @@
+args <- commandArgs(TRUE)
+
 admixture_values= args[1] #ath to Admixture .Q file with admixture components
 plink_fam= args[2] #Path to .fam file to map IDs to the admixture components (in my case column 2 had the ID i chose hence why ID2 is used for merging later)
 mapper_file= args[3] #mapper with 3 colums. col1= ID, col2= population name (pop_name) , col3= cohort name e.g. "HGDP" or "Query"

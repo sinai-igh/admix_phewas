@@ -1,4 +1,4 @@
-##args <- commandArgs(TRUE)
+args <- commandArgs(TRUE)
 inner=args[1]
 position_info= args[2]
 chr= args[3]
