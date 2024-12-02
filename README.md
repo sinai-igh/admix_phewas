@@ -30,7 +30,7 @@ This toy dataset uses the thousand genomes (1KGP) and human genome diversity pro
 A mapper file with population labels for these samples called: sample_map_file_1kgp_hgdp.txt is also in the google drive.
 
 ## Pipeline Map: ##
-#### 0.) Global ancestry inference  #####
+#### 0) Global ancestry inference  #####
 
 * Overview
   * Merge files using PLINK
@@ -38,7 +38,7 @@ A mapper file with population labels for these samples called: sample_map_file_1
   * Run ADMIXTURE
   * Remove samples with complex admixture patterns, choose suitable reference samples for local ancestry inference
 
-##### 1.) Infer local ancestry #####
+##### 1) Infer local ancestry #####
   * Downsample merged files for QC-passed reference panels and samples
   * Phase using EAGLE
   * Convert to VCF format using SHAPEIT 
@@ -46,16 +46,23 @@ A mapper file with population labels for these samples called: sample_map_file_1
   * Infer local ancestry using GNOMIX
   * Plot and filter GNOMIX output
 
-##### 2.1) Run admixture mapping: Two-way and three-way #####
+##### 2) Run admixture mapping: Two-way and three-way #####
 * Convert GNOMIX output to VCFs for SAIGE
 * Create genotype files for SAIGE Step 1
 * Run SAIGE Step 1 and Step 2
 * Process Results
 
-##### 3.1) Plotting results #####
+##### 3) Run admixture mapping: Two-way and three-way #####
+* Convert GNOMIX output to VCFs for SAIGE
+* Create genotype files for SAIGE Step 1
+* Run SAIGE Step 1 and Step 2
+* Process Results
+
+
+##### 4) Plotting results #####
 * Use plotting scripts to visualize local ancestry results
 
-## 0.) Global ancestry inference ###
+## 0) Global ancestry inference ###
 ##### Overview #####
 
 The first step is to merge your query genotype data with the reference panels you are using.  You should find the maximum number of overlapping variants between all files and downsample your files to just these variants. You may need to flip and rename some of the variants so that the order and name of the variants is matching between all genotype files. I usually use PLINKv2 for these pre steps. As of writing PLINKv2 does not have a suitable merging function. You can use PLINK v1.9 to merge the filtered files at the end. If using the toy dataset this step is unnecessary as the query and reference samples are already merged. I remove a set of regions that are known to be under strong selection before calculating global ancestry proportions as they are known to confound PCA and ADMIXTURE estimations.
