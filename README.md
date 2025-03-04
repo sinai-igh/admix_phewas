@@ -1,6 +1,5 @@
 Local ancestry PheWAS pipeline
 =================
-NOTE: This file is a work in progress expected completion: 12/04/24
 
 Citation: Cullina, S., Shemirani, R., Asgari, S. and Kenny, E.E., 2024. Systematic comparison of phenome-wide admixture mapping and genome-wide association in a diverse biobank. medRxiv, pp.2024-11.
 DOI: https://www.medrxiv.org/content/10.1101/2024.11.18.24317494v1
@@ -410,7 +409,10 @@ done < phecode_list.txt
  - Significance threshold AA: p<1.60x10-05  
  - Significance threshold HL: p<4.88x10-06 
 
-I consolidate results into a single file that has results for all phecodes tested with original SAIGE output columns (with an addional column added to the results file that has the phecode name). I filter down this results file to retain associations below a significance threshold of p<5x10-4 to scan for admixture mapping peaks.  The top position of each AM peak was defined by the first position with the most significant p-value for a given association, and start and stop positions for the peak interval are defined as the positions at which the p-value signal drops below one order of magnitude from the peak.  (see preprint linked at top for more details)
+Postprocess SAIGE output:
+* Merge results into a single file that has results for all phecodes tested with original SAIGE output columns (with an addional column added to the results file that has the phecode name).
+* Filter down this results file to retain associations below a significance threshold of p<5x10-4 to scan for admixture mapping peaks.  
+* The top position of each AM peak was defined by the first position with the most significant p-value for a given association, and start and stop positions for the peak interval are defined as the positions at which the p-value signal drops below one order of magnitude from the peak.  (see preprint linked at top for more details)
 
 This script filters this consolidated results file, identifies the number of unique GWS peaks per phecode per chromosome, defines peak boundaries, and adds some additional annotation. Following use of this script, peaks should be plotted and boundaries manually inspected some admixture mapping peaks can have complex structure that require manual adjustment.
 
@@ -431,7 +433,7 @@ We next finemap each admixture mapping peaks to find a likely tag snp by perform
 
 -GLM Model: Phecode ~ Local Ancestry at index LA SNP + Age + Sex + Genotype Chip + PCs1-10 + TEST SNP GENOTYPE X + full GRM
 
-To do this, I made a script that takes the position range for a given admixture mapping peak and extracts this region from an input VCF file containing the genotype calls of individuals that were in the discovery admixture mapping cohort. It then converts genotype calls in the interval to a numeric covariate and adds these columns (naming them snp1, snp2 etc.) to existing phenotype + covariate information to use as input for conditional association testing in SAIGE. It also outputs a summary df that lists each snp in the interval to be included for conditional analysis testing, in this example the output file is called  nsnps_in_interval495_HIS_anc0_1.txt and is used later to launch each of the conditional association SAIGE jobs. The 
+To do this, I made a script that takes the position range for a given admixture mapping peak and extracts this region from an input VCF file containing the genotype calls of individuals that were in the discovery admixture mapping cohort. It then converts genotype calls in the interval to a numeric covariate and adds these columns (naming them snp1, snp2 etc.) to existing phenotype + covariate information to use as input for conditional association testing in SAIGE. It also outputs a summary df that lists each snp in the interval to be included for conditional analysis testing, in this example the output file is called  nsnps_in_interval495_HIS_anc0_1.txt and is used later to launch each of the conditional association SAIGE jobs. 
 
 ```
 #./prep_conditional_analysis_input_files.sh <assoc_id> <vcf_filepath> <chr> <start_bp> <stop_bp> <cov_file> <phecode_col_name>
